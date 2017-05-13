@@ -1,5 +1,4 @@
-# go routine concurrency limiter
-go lang concurrency limiter.
+# go lang goroutine concurrency limiter
 
 ## builds
 
