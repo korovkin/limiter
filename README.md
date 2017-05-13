@@ -1,4 +1,4 @@
-# limiter
+# go routine concurrency limiter
 go lang concurrency limiter.
 
 ## example
