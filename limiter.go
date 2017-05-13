@@ -14,6 +14,7 @@ type ConcurrencyLimiter struct {
 	numInProgress int32    `json:"in_progress"`
 }
 
+// enforce a maximum Concurrency of limit
 func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
 	if limit <= 0 {
 		limit = DEFAULT_LIMIT
@@ -33,6 +34,9 @@ func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
 	return c
 }
 
+// if num of go routines allocated by this instance is < limit
+// launch a new go routine to execut job
+// else wait until a go routine becomes available
 func (c *ConcurrencyLimiter) Execute(job func()) {
 	ticket := <-c.tickets
 	atomic.AddInt32(&c.numInProgress, 1)
@@ -46,12 +50,17 @@ func (c *ConcurrencyLimiter) Execute(job func()) {
 	}()
 }
 
-func (c *ConcurrencyLimiter) GetNumInProgress() int32 {
-	return c.numInProgress
-}
-
+// wait until all the previously Executed jobs completed running
+//
+// IMPORTANT: calling the Wait function while keep calling Execute leads to
+//            un-desired race conditions
 func (c *ConcurrencyLimiter) Wait() {
 	for i := 0; i < c.limit; i++ {
 		_ = <-c.tickets
 	}
+}
+
+// get a racy counter of how many go routines are active right now
+func (c *ConcurrencyLimiter) GetNumInProgress() int32 {
+	return c.numInProgress
 }
