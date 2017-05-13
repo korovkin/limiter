@@ -10,11 +10,13 @@ func TestHello(t *testing.T) {
 }
 
 func TestLimit(t *testing.T) {
-	c := NewConcurrencyLimiter(10)
+	LIMIT := 10
+	N := 100
+
+	c := NewConcurrencyLimiter(LIMIT)
 	m := map[int]bool{}
 	lock := &sync.Mutex{}
 
-	N := 100
 	max := int32(0)
 	for i := 0; i < N; i++ {
 		x := i
@@ -32,11 +34,15 @@ func TestLimit(t *testing.T) {
 	// wait until the above completes
 	c.Wait()
 
-	if len(m) != N {
+	t.Log("results:", len(m))
+	t.Log("max:", max)
+
+	if len(m) != int(N) {
 		t.Error("invalid num of results", len(m))
 	}
 
-	if max > 10 {
+	if max > int32(LIMIT) {
 		t.Error("invalid max", max)
 	}
+
 }
