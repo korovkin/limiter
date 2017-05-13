@@ -9,6 +9,16 @@ func TestHello(t *testing.T) {
 	t.Log("hello")
 }
 
+func TestExample(t *testing.T) {
+	limit := NewConcurrencyLimiter(10)
+	for i := 0; i < 1000; i++ {
+		limit.Execute(func() {
+			// do some work
+		})
+	}
+	limit.Wait()
+}
+
 func TestLimit(t *testing.T) {
 	LIMIT := 10
 	N := 100
