@@ -44,5 +44,4 @@ func TestLimit(t *testing.T) {
 	if max > int32(LIMIT) {
 		t.Error("invalid max", max)
 	}
-
 }
