@@ -5,19 +5,21 @@ import (
 )
 
 const (
-	DEFAULT_LIMIT = 100
+	// DefaultLimit for Concurrency
+	DefaultLimit = 100
 )
 
+// ConcurrencyLimiter describes limiter type
 type ConcurrencyLimiter struct {
-	limit         int      `json:"limit"`
-	tickets       chan int `json:"tickets"`
-	numInProgress int32    `json:"in_progress"`
+	limit         int
+	tickets       chan int
+	numInProgress int32
 }
 
-// enforce a maximum Concurrency of limit
+// NewConcurrencyLimiter enforce a maximum Concurrency of limit
 func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
 	if limit <= 0 {
-		limit = DEFAULT_LIMIT
+		limit = DefaultLimit
 	}
 
 	// allocate a limiter instance
@@ -34,7 +36,7 @@ func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
 	return c
 }
 
-// if num of go routines allocated by this instance is < limit
+// Execute if num of go routines allocated by this instance is < limit
 // launch a new go routine to execut job
 // else wait until a go routine becomes available
 func (c *ConcurrencyLimiter) Execute(job func()) int {
@@ -53,7 +55,7 @@ func (c *ConcurrencyLimiter) Execute(job func()) int {
 	return ticket
 }
 
-// if num of go routines allocated by this instance is < limit
+// ExecuteWithTicket if num of go routines allocated by this instance is < limit
 // launch a new go routine to execut job
 // else wait until a go routine becomes available
 func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) int {
@@ -71,17 +73,17 @@ func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) int {
 	return ticket
 }
 
-// wait until all the previously Executed jobs completed running
+// Wait method wait until all the previously Executed jobs completed running
 //
 // IMPORTANT: calling the Wait function while keep calling Execute leads to
 //            un-desired race conditions
 func (c *ConcurrencyLimiter) Wait() {
 	for i := 0; i < c.limit; i++ {
-		_ = <-c.tickets
+		<-c.tickets
 	}
 }
 
-// get a racy counter of how many go routines are active right now
+// GetNumInProgress get a racy counter of how many go routines are active right now
 func (c *ConcurrencyLimiter) GetNumInProgress() int32 {
 	return c.numInProgress
 }
