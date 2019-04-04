@@ -9,12 +9,25 @@
 limit the number of concurrent go routines to 10:
 
 ```
-  limit := NewConcurrencyLimiter(10)
-  for i := 0; i < 1000; i++ {
-  	limit.Execute(func() {
-  		// do some work
-  	})
-  }
-  limit.Wait()
+limit := NewConcurrencyLimiter(10)
+for i := 0; i < 1000; i++ {
+  limit.Execute(func() {
+    // do some work
+  })
+}
+limit.Wait()
+```
+
+
+Passing custom set of parameters to each go routine:
+```
+limit := NewConcurrencyLimiter(10)
+for i := 0; i < 1000; i++ {
+  limit.ExecuteWithParams(func(params ...interface{}) {
+    jobID := params[0].(int)
+    // do some work using jobID
+  }, i)
+}
+limit.Wait()
 ```
 
