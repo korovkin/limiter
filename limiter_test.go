@@ -55,3 +55,35 @@ func TestLimit(t *testing.T) {
 		t.Error("invalid max", max)
 	}
 }
+
+func TestExecuteWithParams(t *testing.T) {
+	LIMIT := 2
+	N := 30
+	lock := &sync.Mutex{}
+	validatorCounter := 0
+
+	c := NewConcurrencyLimiter(LIMIT)
+	for i := 0; i < N; i++ {
+		validatorCounter += i
+
+		c.ExecuteWithParams(func(params ...interface{}) {
+			p1 := params[0].(int)
+			p2 := params[1].(int)
+
+			lock.Lock()
+			validatorCounter -= p1
+			lock.Unlock()
+			t.Logf("Evaluating p1:%v against p2:%v", p1, p2)
+			if p1*2 != p2 {
+				t.Error("invalid set of parameters", params)
+			}
+		}, i, i*2)
+	}
+
+	// wait until the above completes
+	c.Wait()
+
+	if validatorCounter != 0 {
+		t.Error("race condition detected", validatorCounter)
+	}
+}

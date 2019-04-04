@@ -38,6 +38,12 @@ func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
 // launch a new go routine to execut job
 // else wait until a go routine becomes available
 func (c *ConcurrencyLimiter) Execute(job func()) int {
+	return c.ExecuteWithParams(func(...interface{}) {
+		job()
+	}, nil)
+}
+
+func (c *ConcurrencyLimiter) ExecuteWithParams(job func(...interface{}), params ...interface{}) int {
 	ticket := <-c.tickets
 	atomic.AddInt32(&c.numInProgress, 1)
 	go func() {
@@ -48,13 +54,13 @@ func (c *ConcurrencyLimiter) Execute(job func()) int {
 		}()
 
 		// run the job
-		job()
+		job(params...)
 	}()
 	return ticket
 }
 
 // if num of go routines allocated by this instance is < limit
-// launch a new go routine to execut job
+// launch a new go routine to execute job
 // else wait until a go routine becomes available
 func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) int {
 	ticket := <-c.tickets
