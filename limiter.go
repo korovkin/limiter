@@ -1,23 +1,27 @@
 package limiter
 
 import (
+	"log"
 	"sync/atomic"
 )
 
 const (
-	DEFAULT_LIMIT = 100
+	// DefaultLimit is the default concurrency limit
+	DefaultLimit = 100
 )
 
+// ConcurrencyLimiter object
 type ConcurrencyLimiter struct {
-	limit         int      `json:"limit"`
-	tickets       chan int `json:"tickets"`
-	numInProgress int32    `json:"in_progress"`
+	limit         int
+	tickets       chan int
+	numInProgress int32
 }
 
-// enforce a maximum Concurrency of limit
+// NewConcurrencyLimiter allocates a new ConcurrencyLimiter
 func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
+	log.Println("Hello")
 	if limit <= 0 {
-		limit = DEFAULT_LIMIT
+		limit = DefaultLimit
 	}
 
 	// allocate a limiter instance
@@ -34,6 +38,7 @@ func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
 	return c
 }
 
+// Execute adds a function to the execution queue.
 // if num of go routines allocated by this instance is < limit
 // launch a new go routine to execut job
 // else wait until a go routine becomes available
@@ -53,6 +58,7 @@ func (c *ConcurrencyLimiter) Execute(job func()) int {
 	return ticket
 }
 
+// ExecuteWithTicket adds a job into an execution queue and returns a ticket id.
 // if num of go routines allocated by this instance is < limit
 // launch a new go routine to execut job
 // else wait until a go routine becomes available
@@ -71,7 +77,7 @@ func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) int {
 	return ticket
 }
 
-// wait until all the previously Executed jobs completed running
+// Wait will block all the previously Executed jobs completed running.
 //
 // IMPORTANT: calling the Wait function while keep calling Execute leads to
 //            un-desired race conditions
@@ -81,7 +87,7 @@ func (c *ConcurrencyLimiter) Wait() {
 	}
 }
 
-// get a racy counter of how many go routines are active right now
+// GetNumInProgress returns a (racy) counter of how many go routines are active right now
 func (c *ConcurrencyLimiter) GetNumInProgress() int32 {
 	return c.numInProgress
 }
