@@ -40,7 +40,7 @@ func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
 
 // Execute adds a function to the execution queue.
 // if num of go routines allocated by this instance is < limit
-// launch a new go routine to execut job
+// launch a new go routine to execute job
 // else wait until a go routine becomes available
 func (c *ConcurrencyLimiter) Execute(job func()) int {
 	ticket := <-c.tickets
@@ -60,7 +60,7 @@ func (c *ConcurrencyLimiter) Execute(job func()) int {
 
 // ExecuteWithTicket adds a job into an execution queue and returns a ticket id.
 // if num of go routines allocated by this instance is < limit
-// launch a new go routine to execut job
+// launch a new go routine to execute job
 // else wait until a go routine becomes available
 func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) int {
 	ticket := <-c.tickets
