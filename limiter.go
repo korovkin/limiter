@@ -87,5 +87,5 @@ func (c *ConcurrencyLimiter) Wait() {
 
 // GetNumInProgress returns a (racy) counter of how many go routines are active right now
 func (c *ConcurrencyLimiter) GetNumInProgress() int32 {
-	return c.numInProgress
+	return atomic.LoadInt32(&c.numInProgress)
 }
