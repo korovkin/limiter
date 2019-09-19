@@ -1,7 +1,6 @@
 package limiter
 
 import (
-	"log"
 	"sync/atomic"
 )
 
@@ -19,7 +18,6 @@ type ConcurrencyLimiter struct {
 
 // NewConcurrencyLimiter allocates a new ConcurrencyLimiter
 func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
-	log.Println("Hello")
 	if limit <= 0 {
 		limit = DefaultLimit
 	}
