@@ -1,12 +1,18 @@
 package limiter
 
 import (
+	"errors"
 	"sync/atomic"
 )
 
 const (
 	// DefaultLimit is the default concurrency limit
 	DefaultLimit = 100
+)
+
+var (
+	// appending a callback to a closed limiter
+	ErrorClosed = errors.New("limiter closed")
 )
 
 // ConcurrencyLimiter object
@@ -22,7 +28,6 @@ func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
 		limit = DefaultLimit
 	}
 
-	// allocate a limiter instance
 	c := &ConcurrencyLimiter{
 		limit:   limit,
 		tickets: make(chan int, limit),
@@ -40,8 +45,11 @@ func NewConcurrencyLimiter(limit int) *ConcurrencyLimiter {
 // if num of go routines allocated by this instance is < limit
 // launch a new go routine to execute job
 // else wait until a go routine becomes available
-func (c *ConcurrencyLimiter) Execute(job func()) int {
-	ticket := <-c.tickets
+func (c *ConcurrencyLimiter) Execute(job func()) (int, error) {
+	ticket, opened := <-c.tickets
+	if !opened {
+		return -1, ErrorClosed
+	}
 	atomic.AddInt32(&c.numInProgress, 1)
 	go func() {
 		defer func() {
@@ -52,15 +60,18 @@ func (c *ConcurrencyLimiter) Execute(job func()) int {
 		// run the job
 		job()
 	}()
-	return ticket
+	return ticket, nil
 }
 
 // ExecuteWithTicket adds a job into an execution queue and returns a ticket id.
 // if num of go routines allocated by this instance is < limit
 // launch a new go routine to execute job
 // else wait until a go routine becomes available
-func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) int {
-	ticket := <-c.tickets
+func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) (int, error) {
+	ticket, opened := <-c.tickets
+	if !opened {
+		return -1, ErrorClosed
+	}
 	atomic.AddInt32(&c.numInProgress, 1)
 	go func() {
 		defer func() {
@@ -71,7 +82,7 @@ func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) int {
 		// run the job
 		job(ticket)
 	}()
-	return ticket
+	return ticket, nil
 }
 
 // Wait will block all the previously Executed jobs completed running.
@@ -82,6 +93,12 @@ func (c *ConcurrencyLimiter) Wait() {
 	for i := 0; i < c.limit; i++ {
 		<-c.tickets
 	}
+}
+
+// Close the limiter and free the tickets channel
+func (c *ConcurrencyLimiter) Close() error {
+	close(c.tickets)
+	return nil
 }
 
 // GetNumInProgress returns a (racy) counter of how many go routines are active right now
