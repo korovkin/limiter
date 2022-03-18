@@ -112,6 +112,8 @@ func TestConcurrentIO(t *testing.T) {
 
 	t.Run("TestConcurrentIO", func(*testing.T) {
 		c := limiter.NewConcurrencyLimiter(10)
+		defer c.Close()
+
 		httpGoogle := int(0)
 		c.Execute(func() {
 			resp, err := http.Get("https://www.google.com/")
