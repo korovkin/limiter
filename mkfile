@@ -5,4 +5,4 @@ build:
 	go build
 
 test:
-  go test -v limiter_test.go
+	go test -v limiter_test.go

@@ -47,7 +47,6 @@ func (c *ConcurrencyLimiter) Execute(job func()) int {
 		defer func() {
 			c.tickets <- ticket
 			atomic.AddInt32(&c.numInProgress, -1)
-
 		}()
 
 		// run the job
@@ -81,7 +80,7 @@ func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) int {
 //            un-desired race conditions
 func (c *ConcurrencyLimiter) Wait() {
 	for i := 0; i < c.limit; i++ {
-		_ = <-c.tickets
+		<-c.tickets
 	}
 }
 
