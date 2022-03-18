@@ -2,6 +2,7 @@ package limiter_test
 
 import (
 	"log"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -73,7 +74,7 @@ func TestLimit(t *testing.T) {
 func TestExecuteWithTicket(t *testing.T) {
 	RegisterTestingT(t)
 
-	t.Run("TestExecuteWithTicket", func(t *testing.T) {
+	t.Run("TestExecuteWithTicket", func(*testing.T) {
 		LIMIT := 10
 		N := 100
 		c := limiter.NewConcurrencyLimiter(LIMIT)
@@ -103,5 +104,32 @@ func TestExecuteWithTicket(t *testing.T) {
 			log.Println("more")
 		})
 		Expect(err).ToNot(BeNil())
+	})
+}
+
+func TestConcurrentIO(t *testing.T) {
+	RegisterTestingT(t)
+
+	t.Run("TestConcurrentIO", func(*testing.T) {
+		c := limiter.NewConcurrencyLimiter(10)
+		httpGoogle := int(0)
+		c.Execute(func() {
+			resp, err := http.Get("https://www.google.com/")
+			Expect(err).To(BeNil())
+			defer resp.Body.Close()
+			httpGoogle = resp.StatusCode
+		})
+		httpApple := int(0)
+		c.Execute(func() {
+			resp, err := http.Get("https://www.apple.com/")
+			Expect(err).To(BeNil())
+			defer resp.Body.Close()
+			httpApple = resp.StatusCode
+		})
+		c.Wait()
+
+		Expect(httpGoogle).To(BeEquivalentTo(200))
+		Expect(httpApple).To(BeEquivalentTo(200))
+
 	})
 }
