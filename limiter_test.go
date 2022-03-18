@@ -84,9 +84,7 @@ func TestExecuteWithTicket(t *testing.T) {
 			c.ExecuteWithTicket(func(ticket int) {
 				lock.Lock()
 				m[ticket] += 1
-				if ticket > LIMIT-1 {
-					t.Errorf("expected max ticket: %d, got %d", LIMIT, ticket)
-				}
+				Expect(ticket).To(BeNumerically("<", LIMIT))
 				lock.Unlock()
 			})
 		}
