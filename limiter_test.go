@@ -130,6 +130,5 @@ func TestConcurrentIO(t *testing.T) {
 
 		Expect(httpGoogle).To(BeEquivalentTo(200))
 		Expect(httpApple).To(BeEquivalentTo(200))
-
 	})
 }
