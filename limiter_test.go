@@ -1,12 +1,14 @@
-package limiter
+package limiter_test
 
 import (
 	"sync"
 	"testing"
+
+	"github.com/korovkin/limiter"
 )
 
 func TestExample(t *testing.T) {
-	limit := NewConcurrencyLimiter(10)
+	limit := limiter.NewConcurrencyLimiter(10)
 	for i := 0; i < 1000; i++ {
 		limit.Execute(func() {
 			// do some work
@@ -19,7 +21,7 @@ func TestLimit(t *testing.T) {
 	LIMIT := 10
 	N := 100
 
-	c := NewConcurrencyLimiter(LIMIT)
+	c := limiter.NewConcurrencyLimiter(LIMIT)
 	m := map[int]bool{}
 	lock := &sync.Mutex{}
 
@@ -55,7 +57,7 @@ func TestLimit(t *testing.T) {
 func TestExecuteWithTicket(t *testing.T) {
 	LIMIT := 10
 	N := 100
-	c := NewConcurrencyLimiter(LIMIT)
+	c := limiter.NewConcurrencyLimiter(LIMIT)
 	m := map[int]int{}
 	lock := &sync.Mutex{}
 
@@ -77,18 +79,5 @@ func TestExecuteWithTicket(t *testing.T) {
 	}
 	if sum != N {
 		t.Errorf("invalid num of results: %d, expected %d", sum, N)
-	}
-}
-
-func TestNewConcurrencyLimiter(t *testing.T) {
-	c := NewConcurrencyLimiter(0)
-	if c.limit != DefaultLimit {
-		t.Errorf("expected DefaultLimit: %d, got %d", c.limit, DefaultLimit)
-	}
-
-	LIMIT := DefaultLimit + (DefaultLimit / 2)
-	c = NewConcurrencyLimiter(LIMIT)
-	if cap(c.tickets) != LIMIT {
-		t.Errorf("expected allocate the tickets %d, got %d", LIMIT, cap(c.tickets))
 	}
 }
