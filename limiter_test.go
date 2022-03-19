@@ -134,3 +134,13 @@ func TestConcurrentIO(t *testing.T) {
 		Expect(httpApple).To(BeEquivalentTo(200))
 	})
 }
+
+func TestEmpty(t *testing.T) {
+	RegisterTestingT(t)
+
+	t.Run("TestEmpty", func(*testing.T) {
+		c := limiter.NewConcurrencyLimiter(10)
+		defer c.Close()
+		c.Wait()
+	})
+}
