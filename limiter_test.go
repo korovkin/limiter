@@ -24,8 +24,7 @@ func TestExample(t *testing.T) {
 				atomic.AddInt32(&x, -1)
 			})
 		}
-		limit.Wait()
-		defer limit.Close()
+		limit.WaitAndClose()
 		Expect(limit.GetNumInProgress()).To(BeEquivalentTo(0))
 		Expect(x).To(BeEquivalentTo(0))
 	})
@@ -57,13 +56,12 @@ func TestLimit(t *testing.T) {
 		}
 
 		// wait until the above completes
-		c.Wait()
+		c.WaitAndClose()
 
 		Expect(max).To(BeEquivalentTo(10))
 		Expect(len(m)).To(BeEquivalentTo(N))
 		Expect(c.GetNumInProgress()).To(BeEquivalentTo(0))
 
-		c.Close()
 		_, err := c.Execute(func() {
 			log.Println("more")
 		})
@@ -89,7 +87,7 @@ func TestExecuteWithTicket(t *testing.T) {
 				lock.Unlock()
 			})
 		}
-		c.Wait()
+		c.WaitAndClose()
 
 		sum := 0
 		for _, count := range m {
@@ -99,9 +97,8 @@ func TestExecuteWithTicket(t *testing.T) {
 		Expect(sum).To(BeEquivalentTo(N))
 		Expect(c.GetNumInProgress()).To(BeEquivalentTo(0))
 
-		c.Close()
 		_, err := c.Execute(func() {
-			log.Println("more")
+			log.Println("more ...")
 		})
 		Expect(err).ToNot(BeNil())
 	})
@@ -112,7 +109,6 @@ func TestConcurrentIO(t *testing.T) {
 
 	t.Run("TestConcurrentIO", func(*testing.T) {
 		c := limiter.NewConcurrencyLimiter(10)
-		defer c.Close()
 
 		httpGoogle := int(0)
 		c.Execute(func() {
@@ -128,7 +124,7 @@ func TestConcurrentIO(t *testing.T) {
 			defer resp.Body.Close()
 			httpApple = resp.StatusCode
 		})
-		c.Wait()
+		c.WaitAndClose()
 
 		Expect(httpGoogle).To(BeEquivalentTo(200))
 		Expect(httpApple).To(BeEquivalentTo(200))
@@ -140,7 +136,6 @@ func TestEmpty(t *testing.T) {
 
 	t.Run("TestEmpty", func(*testing.T) {
 		c := limiter.NewConcurrencyLimiter(10)
-		defer c.Close()
-		c.Wait()
+		c.WaitAndClose()
 	})
 }

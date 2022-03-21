@@ -85,23 +85,25 @@ func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) (int, error
 	return ticket, nil
 }
 
-// Wait will block all the previously Executed jobs completed running.
+// WaitAndClose will block until all the previously Executed jobs completed running.
+// New tasks won't be allow
 //
 // IMPORTANT: calling the Wait function while keep calling Execute leads to
 //            un-desired race conditions
-func (c *ConcurrencyLimiter) Wait() {
+func (c *ConcurrencyLimiter) WaitAndClose() error {
 	for i := 0; i < c.limit; i++ {
 		<-c.tickets
 	}
-}
-
-// Close the limiter and free the tickets channel
-func (c *ConcurrencyLimiter) Close() error {
-	close(c.tickets)
-	return nil
+	return c.close()
 }
 
 // GetNumInProgress returns a (racy) counter of how many go routines are active right now
 func (c *ConcurrencyLimiter) GetNumInProgress() int32 {
 	return atomic.LoadInt32(&c.numInProgress)
+}
+
+// close the limiter and free the tickets channel
+func (c *ConcurrencyLimiter) close() error {
+	close(c.tickets)
+	return nil
 }

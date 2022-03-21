@@ -14,14 +14,13 @@ limit the number of concurrent go routines to 10:
   ...
 
   limit := limiter.NewConcurrencyLimiter(10)
-  defer limit.Close()
+  defer limit.WaitAndClose()
 
   for i := 0; i < 1000; i++ {
     limit.Execute(func() {
       // do some work
     })
   }
-  limit.Wait()
 ```
 
 ## Real World Example:
@@ -32,7 +31,6 @@ limit the number of concurrent go routines to 10:
   ...
 
   limiter := limiter.NewConcurrencyLimiter(10)
-  defer c.Close()
 
   httpGoogle := int(0)
   limiter.Execute(func() {
@@ -50,7 +48,7 @@ limit the number of concurrent go routines to 10:
     httpApple = resp.StatusCode
   })
 
-  limiter.Wait()
+  limiter.WaitAndClose()
 
   log.Println("httpGoogle:", httpGoogle)
   log.Println("httpApple:", httpApple)
