@@ -53,3 +53,29 @@ limit the number of concurrent go routines to 10:
   log.Println("httpGoogle:", httpGoogle)
   log.Println("httpApple:", httpApple)
 ```
+
+## Concurrent IO with Error tracking:
+
+```
+  import "github.com/korovkin/limiter"
+  ...
+	a := errors.New("error a")
+	b := errors.New("error b")
+
+	concurrently := limiter.NewConcurrencyLimiterForIO(limiter.DefaultConcurrencyLimitIO)
+	concurrently.Execute(func() {
+		// Do some really slow IO ...
+		// keep the error:
+		concurrently.FirstErrorStore(a)
+	})
+	concurrently.Execute(func() {
+		// Do some really slow IO ...
+		// keep the error:
+		concurrently.FirstErrorStore(b)
+	})
+	concurrently.WaitAndClose()
+
+	firstErr := concurrently.FirstErrorGet()
+	Expect(firstErr == a || firstErr == b).To(BeTrue())
+
+```
