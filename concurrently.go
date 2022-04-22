@@ -34,11 +34,12 @@ func (c *Concurrently) WaitAndClose() error {
 	return c.conc.WaitAndClose()
 }
 
-func (c *Concurrently) FirstErrorStore(e error) error {
+func (c *Concurrently) FirstErrorStore(e error) (bool, error) {
+	stored := false
 	if e != nil {
-		c.firstError.Store(e)
+		stored = c.firstError.CompareAndSwap(nil, e)
 	}
-	return e
+	return stored, e
 }
 
 func (c *Concurrently) FirstErrorGet() error {
