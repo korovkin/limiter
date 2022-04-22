@@ -1,6 +1,7 @@
 package limiter_test
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"sync"
@@ -128,6 +129,36 @@ func TestConcurrentIO(t *testing.T) {
 
 		Expect(httpGoogle).To(BeEquivalentTo(200))
 		Expect(httpApple).To(BeEquivalentTo(200))
+	})
+}
+
+func TestConcurrently(t *testing.T) {
+	RegisterTestingT(t)
+
+	t.Run("TestConcurrently", func(*testing.T) {
+		a := errors.New("error a")
+		b := errors.New("error b")
+		completed := int32(0)
+
+		concurrently := limiter.NewConcurrencyLimiterForIO(limiter.DefaultConcurrencyLimitIO)
+		concurrently.Execute(func() {
+			atomic.AddInt32(&completed, 1)
+			// Do some really slow IO ...
+			// keep the error:
+			concurrently.FirstErrorStore(a)
+		})
+		concurrently.Execute(func() {
+			atomic.AddInt32(&completed, 1)
+			// Do some really slow IO ...
+			// keep the error:
+			concurrently.FirstErrorStore(b)
+		})
+		concurrently.WaitAndClose()
+
+		Expect(completed).To(BeEquivalentTo(2))
+		firstErr := concurrently.FirstErrorGet()
+		Expect(firstErr).ToNot(BeNil())
+		Expect(firstErr == a || firstErr == b).To(BeTrue())
 	})
 }
 
