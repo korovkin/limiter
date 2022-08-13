@@ -2,80 +2,65 @@
 
 ## builds
 
-[![Build Status](https://travis-ci.org/korovkin/limiter.svg)](https://travis-ci.org/korovkin/limiter)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/JaderDias/limiter/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/JaderDias/limiter/tree/main)
 
 ## Example
 
 limit the number of concurrent go routines to 10:
 
 ```
-  import "github.com/korovkin/limiter"
+  import "github.com/JaderDias/limiter"
 
   ...
 
-  limit := limiter.NewConcurrencyLimiter(10)
-  defer limit.WaitAndClose()
-
-  for i := 0; i < 1000; i++ {
-    limit.Execute(func() {
+  limiter.BoundedConcurrency(10, 1000, func(i int) {
       // do some work
-    })
-  }
+  })
 ```
 
 ## Real World Example:
 
 ```
-  import "github.com/korovkin/limiter"
+  import "github.com/JaderDias/limiter"
 
   ...
 
-  limiter := limiter.NewConcurrencyLimiter(10)
-
-  httpGoogle := int(0)
-  limiter.Execute(func() {
-    resp, err := http.Get("https://www.google.com/")
+  urls := []string{
+    "http://www.google.com",
+    "http://www.apple.com",
+  }
+  results := make([]int, 2)
+  limiter.BoundedConcurrency(10, 2, func(i int) {
+    resp, err := http.Get(urls[i])
     Expect(err).To(BeNil())
     defer resp.Body.Close()
-    httpGoogle = resp.StatusCode
+    results[i] = resp.StatusCode
   })
 
-  httpApple := int(0)
-  limiter.Execute(func() {
-    resp, err := http.Get("https://www.apple.com/")
-    Expect(err).To(BeNil())
-    defer resp.Body.Close()
-    httpApple = resp.StatusCode
-  })
-
-  limiter.WaitAndClose()
-
-  log.Println("httpGoogle:", httpGoogle)
-  log.Println("httpApple:", httpApple)
+  log.Println("httpGoogle:", results[0])
+  log.Println("httpApple:", results[1])
 ```
 
 ## Concurrent IO with Error tracking:
 
 ```
-  import "github.com/korovkin/limiter"
+  import "github.com/JaderDias/limiter"
+  
   ...
-	a := errors.New("error a")
-	b := errors.New("error b")
 
-	concurrently := limiter.NewConcurrencyLimiterForIO(limiter.DefaultConcurrencyLimitIO)
-	concurrently.Execute(func() {
-		// Do some really slow IO ...
-		// keep the error:
-		concurrently.FirstErrorStore(a)
-	})
-	concurrently.Execute(func() {
-		// Do some really slow IO ...
-		// keep the error:
-		concurrently.FirstErrorStore(b)
-	})
-	concurrently.WaitAndClose()
+  errors := []error{
+    errors.New("error a"),
+    errors.New("error b"),
+  }
+  var firstError atomic.Value
+  completed := int32(0)
+  limiter.BoundedConcurrency(4, 2, func(i int) {
+    atomic.AddInt32(&completed, 1)
+    // Do some really slow IO ...
+    // keep the error:
+    firstError.CompareAndSwap(nil, errors[i])
+  })
 
-	firstErr := concurrently.FirstErrorGet()
-	Expect(firstErr == a || firstErr == b).To(BeTrue())
-
+  firstErrorValue := firstError.Load().(error)
+  Expect(firstErrorValue == errors[0] || firstErrorValue == errors[1]).To(BeTrue())
 ```

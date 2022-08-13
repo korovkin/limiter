@@ -1,4 +1,4 @@
-module github.com/korovkin/limiter
+module github.com/JaderDias/limiter
 
 go 1.17
 

@@ -2,13 +2,12 @@ package limiter_test
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"sync"
 	"sync/atomic"
 	"testing"
 
-	"github.com/korovkin/limiter"
+	"github.com/JaderDias/limiter"
 
 	. "github.com/onsi/gomega"
 )
@@ -18,15 +17,10 @@ func TestExample(t *testing.T) {
 
 	t.Run("TestExample", func(*testing.T) {
 		x := int32(1000)
-		limit := limiter.NewConcurrencyLimiter(10)
-		for i := 0; i < 1000; i++ {
-			limit.Execute(func() {
-				// do some work:
-				atomic.AddInt32(&x, -1)
-			})
-		}
-		limit.WaitAndClose()
-		Expect(limit.GetNumInProgress()).To(BeEquivalentTo(0))
+		limiter.BoundedConcurrency(10, 1000, func(i int) {
+			// do some work:
+			atomic.AddInt32(&x, -1)
+		})
 		Expect(x).To(BeEquivalentTo(0))
 	})
 }
@@ -36,72 +30,24 @@ func TestLimit(t *testing.T) {
 
 	t.Run("TestLimit", func(*testing.T) {
 		LIMIT := 10
-		N := 100
-
-		c := limiter.NewConcurrencyLimiter(LIMIT)
+		N := 1000
 		m := map[int]bool{}
 		lock := &sync.Mutex{}
-
 		max := int32(0)
-		for i := 0; i < N; i++ {
-			x := i
-			c.Execute(func() {
-				lock.Lock()
-				m[x] = true
-				currentMax := c.GetNumInProgress()
-				if currentMax >= max {
-					max = currentMax
-				}
-				lock.Unlock()
-			})
-		}
+		concurrent := int32(0)
+		limiter.BoundedConcurrency(LIMIT, N, func(i int) {
+			atomic.AddInt32(&concurrent, 1)
+			lock.Lock()
+			m[i] = true
+			lock.Unlock()
+			if concurrent > max {
+				max = concurrent
+			}
+			atomic.AddInt32(&concurrent, -1)
+		})
 
-		// wait until the above completes
-		c.WaitAndClose()
-
-		Expect(max).To(BeEquivalentTo(10))
 		Expect(len(m)).To(BeEquivalentTo(N))
-		Expect(c.GetNumInProgress()).To(BeEquivalentTo(0))
-
-		_, err := c.Execute(func() {
-			log.Println("more")
-		})
-		Expect(err).ToNot(BeNil())
-	})
-}
-
-func TestExecuteWithTicket(t *testing.T) {
-	RegisterTestingT(t)
-
-	t.Run("TestExecuteWithTicket", func(*testing.T) {
-		LIMIT := 10
-		N := 100
-		c := limiter.NewConcurrencyLimiter(LIMIT)
-		m := map[int]int{}
-		lock := &sync.Mutex{}
-
-		for i := 0; i < N; i++ {
-			c.ExecuteWithTicket(func(ticket int) {
-				lock.Lock()
-				m[ticket] += 1
-				Expect(ticket).To(BeNumerically("<", LIMIT))
-				lock.Unlock()
-			})
-		}
-		c.WaitAndClose()
-
-		sum := 0
-		for _, count := range m {
-			sum += count
-		}
-
-		Expect(sum).To(BeEquivalentTo(N))
-		Expect(c.GetNumInProgress()).To(BeEquivalentTo(0))
-
-		_, err := c.Execute(func() {
-			log.Println("more ...")
-		})
-		Expect(err).ToNot(BeNil())
+		Expect(max).To(BeEquivalentTo(int32(LIMIT)))
 	})
 }
 
@@ -109,26 +55,20 @@ func TestConcurrentIO(t *testing.T) {
 	RegisterTestingT(t)
 
 	t.Run("TestConcurrentIO", func(*testing.T) {
-		c := limiter.NewConcurrencyLimiter(10)
-
-		httpGoogle := int(0)
-		c.Execute(func() {
-			resp, err := http.Get("https://www.google.com/")
+		urls := []string{
+			"http://www.google.com",
+			"http://www.apple.com",
+		}
+		results := make([]int, 2)
+		limiter.BoundedConcurrency(10, 2, func(i int) {
+			resp, err := http.Get(urls[i])
 			Expect(err).To(BeNil())
 			defer resp.Body.Close()
-			httpGoogle = resp.StatusCode
+			results[i] = resp.StatusCode
 		})
-		httpApple := int(0)
-		c.Execute(func() {
-			resp, err := http.Get("https://www.apple.com/")
-			Expect(err).To(BeNil())
-			defer resp.Body.Close()
-			httpApple = resp.StatusCode
-		})
-		c.WaitAndClose()
 
-		Expect(httpGoogle).To(BeEquivalentTo(200))
-		Expect(httpApple).To(BeEquivalentTo(200))
+		Expect(results[0]).To(BeEquivalentTo(200))
+		Expect(results[1]).To(BeEquivalentTo(200))
 	})
 }
 
@@ -136,29 +76,23 @@ func TestConcurrently(t *testing.T) {
 	RegisterTestingT(t)
 
 	t.Run("TestConcurrently", func(*testing.T) {
-		a := errors.New("error a")
-		b := errors.New("error b")
+		errors := []error{
+			errors.New("error a"),
+			errors.New("error b"),
+		}
+		var firstError atomic.Value
 		completed := int32(0)
-
-		concurrently := limiter.NewConcurrencyLimiterForIO(limiter.DefaultConcurrencyLimitIO)
-		concurrently.Execute(func() {
+		limiter.BoundedConcurrency(4, 2, func(i int) {
 			atomic.AddInt32(&completed, 1)
 			// Do some really slow IO ...
 			// keep the error:
-			concurrently.FirstErrorStore(a)
+			firstError.CompareAndSwap(nil, errors[i])
 		})
-		concurrently.Execute(func() {
-			atomic.AddInt32(&completed, 1)
-			// Do some really slow IO ...
-			// keep the error:
-			concurrently.FirstErrorStore(b)
-		})
-		concurrently.WaitAndClose()
 
 		Expect(completed).To(BeEquivalentTo(2))
-		firstErr := concurrently.FirstErrorGet()
-		Expect(firstErr).ToNot(BeNil())
-		Expect(firstErr == a || firstErr == b).To(BeTrue())
+		firstErrorValue := firstError.Load().(error)
+		Expect(firstErrorValue).ToNot(BeNil())
+		Expect(firstErrorValue == errors[0] || firstErrorValue == errors[1]).To(BeTrue())
 	})
 }
 
@@ -166,8 +100,8 @@ func TestEmpty(t *testing.T) {
 	RegisterTestingT(t)
 
 	t.Run("TestEmpty", func(*testing.T) {
-		c := limiter.NewConcurrencyLimiter(10)
-		c.WaitAndClose()
+		limiter.BoundedConcurrency(4, 0, func(i int) {
+		})
 	})
 }
 
@@ -190,13 +124,9 @@ func Benchmark_10Ktasks_numWorkers1000(b *testing.B) {
 func benchmark(b *testing.B, numberOfTasks, numberOfWorkers int) {
 	for i := 0; i < b.N; i++ {
 		x := int32(numberOfTasks)
-		limit := limiter.NewConcurrencyLimiter(numberOfWorkers)
-		for i := 0; i < numberOfTasks; i++ {
-			limit.Execute(func() {
-				// do some work:
-				atomic.AddInt32(&x, -1)
-			})
-		}
-		limit.WaitAndClose()
+		limiter.BoundedConcurrency(numberOfWorkers, numberOfTasks, func(i int) {
+			// do some work:
+			atomic.AddInt32(&x, -1)
+		})
 	}
 }
