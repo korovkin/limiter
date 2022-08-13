@@ -25,6 +25,35 @@ func TestExample(t *testing.T) {
 	})
 }
 
+func TestWithDoneProcessor(t *testing.T) {
+	RegisterTestingT(t)
+
+	t.Run("TestExample", func(*testing.T) {
+		LIMIT := 10
+		N := 1000
+		x := int32(N)
+		results := make([]int32, N)
+		limiter.BoundedConcurrencyWithDoneProcessor(
+			LIMIT,
+			N,
+			func(i int) int32 {
+				// do some work:
+				return atomic.AddInt32(&x, -1)
+			},
+			func(result int32) {
+				results[int(result)] = 1 + result
+			},
+		)
+		Expect(x).To(BeEquivalentTo(0))
+		for i, v := range results {
+			Expect(i >= 0).To(BeEquivalentTo(true))
+			Expect(i < N).To(BeEquivalentTo(true))
+			Expect(v > 0).To(BeEquivalentTo(true))
+			Expect(int(v) <= N).To(BeEquivalentTo(true))
+		}
+	})
+}
+
 func TestLimit(t *testing.T) {
 	RegisterTestingT(t)
 

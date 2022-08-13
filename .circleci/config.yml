@@ -3,7 +3,7 @@ jobs: # basic units of work in a run
   build: # runs not using Workflows must have a `build` job as entry point
     docker: # run the steps with Docker
       # CircleCI Go images available at: https://hub.docker.com/r/circleci/golang/
-      - image: circleci/golang:1.17
+      - image: golang:1.18-buster
 
     parallelism: 1
 
