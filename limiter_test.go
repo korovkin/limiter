@@ -170,3 +170,33 @@ func TestEmpty(t *testing.T) {
 		c.WaitAndClose()
 	})
 }
+
+func Benchmark_10tasks_numWorkers1(b *testing.B) {
+	benchmark(b, 10, 1)
+}
+
+func Benchmark_100tasks_numWorkers10(b *testing.B) {
+	benchmark(b, 100, 10)
+}
+
+func Benchmark_10Ktasks_numWorkers100(b *testing.B) {
+	benchmark(b, 10000, 100)
+}
+
+func Benchmark_10Ktasks_numWorkers1000(b *testing.B) {
+	benchmark(b, 10000, 1000)
+}
+
+func benchmark(b *testing.B, numberOfTasks, numberOfWorkers int) {
+	for i := 0; i < b.N; i++ {
+		x := int32(numberOfTasks)
+		limit := limiter.NewConcurrencyLimiter(numberOfWorkers)
+		for i := 0; i < numberOfTasks; i++ {
+			limit.Execute(func() {
+				// do some work:
+				atomic.AddInt32(&x, -1)
+			})
+		}
+		limit.WaitAndClose()
+	}
+}
