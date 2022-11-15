@@ -89,7 +89,8 @@ func (c *ConcurrencyLimiter) ExecuteWithTicket(job func(ticket int)) (int, error
 // New tasks won't be allow
 //
 // IMPORTANT: calling the Wait function while keep calling Execute leads to
-//            un-desired race conditions
+//
+//	un-desired race conditions
 func (c *ConcurrencyLimiter) WaitAndClose() error {
 	for i := 0; i < c.limit; i++ {
 		<-c.tickets
@@ -104,6 +105,15 @@ func (c *ConcurrencyLimiter) GetNumInProgress() int32 {
 
 // close the limiter and free the tickets channel
 func (c *ConcurrencyLimiter) close() error {
-	close(c.tickets)
+	// non panicking if tickets already closed (only return error)
+	select {
+	case _, opened := <-c.tickets:
+		if !opened {
+			return ErrorClosed
+		}
+	default:
+		close(c.tickets)
+	}
+
 	return nil
 }
