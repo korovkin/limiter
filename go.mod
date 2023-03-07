@@ -1,6 +1,6 @@
 module github.com/korovkin/limiter
 
-go 1.17
+go 1.18
 
 require github.com/onsi/gomega v1.18.1
 
