@@ -2,11 +2,13 @@ package limiter_test
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/korovkin/limiter"
 
@@ -168,5 +170,32 @@ func TestEmpty(t *testing.T) {
 	t.Run("TestEmpty", func(*testing.T) {
 		c := limiter.NewConcurrencyLimiter(10)
 		c.WaitAndClose()
+	})
+}
+
+func TestDuo(t *testing.T) {
+	RegisterTestingT(t)
+
+	t.Run("TestDuo", func(*testing.T) {
+		l1 := *limiter.NewConcurrencyLimiter(10)
+		l2 := *limiter.NewConcurrencyLimiter(10)
+
+		l1.Execute(func() {
+			for {
+				fmt.Println("l1 is alive")
+				time.Sleep(time.Second * 5)
+
+				l2.Execute(func() {
+					for {
+						fmt.Println("l2 is alive")
+						time.Sleep(time.Second * 5)
+					}
+				})
+			}
+		})
+
+		l1.WaitAndClose()
+		l2.WaitAndClose()
+
 	})
 }
