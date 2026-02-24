@@ -179,16 +179,17 @@ func TestDuo(t *testing.T) {
 	t.Run("TestDuo", func(*testing.T) {
 		l1 := *limiter.NewConcurrencyLimiter(10)
 		l2 := *limiter.NewConcurrencyLimiter(10)
+		completed := int32(0)
 
 		l1.Execute(func() {
-			for {
-				fmt.Println("l1 is alive")
-				time.Sleep(time.Second * 5)
+			for i := 0; i < 5; i++ {
+				time.Sleep(time.Millisecond * 20)
 
 				l2.Execute(func() {
-					for {
-						fmt.Println("l2 is alive")
-						time.Sleep(time.Second * 5)
+					for j := 0; j < 5; j++ {
+						atomic.AddInt32(&completed, 1)
+						fmt.Println("l2 is alive: ", i, j, completed)
+						time.Sleep(time.Millisecond * 20)
 					}
 				})
 			}
@@ -197,5 +198,7 @@ func TestDuo(t *testing.T) {
 		l1.WaitAndClose()
 		l2.WaitAndClose()
 
+		fmt.Println("completed:", completed)
+		Expect(completed).To(BeEquivalentTo(25))
 	})
 }
