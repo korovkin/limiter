@@ -1,10 +1,10 @@
-travis:
+travis: build test
 	go build
 
 build:
 	go build
-	cd examples/simple && go build -o simple
-	cd examples/tui && go build -o tui
+	go build -o simple.exe ./examples/simple/*.go
+	go build -o tui.exe ./examples/tui/*.go
 
 run-simple:
 	cd examples/simple && go run main.go
@@ -14,3 +14,7 @@ run-tui:
 
 test:
 	go test -v .
+
+tidy:
+	go mod vendor
+	go mod tidy
